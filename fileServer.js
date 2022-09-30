@@ -4,6 +4,25 @@ const fs = require('fs');
 const pathModule = require('path');
 
 
+class HtmlTable
+{
+	begin(border=1){
+		return "<table border="+border+">";
+	}
+	row(...args){
+		let res = "<tr>";
+		
+		for(let arg of args){
+			res += "<td>"+arg+"</td>";
+		}
+		res += "</tr>";
+		return res;
+	}
+	end(){
+		return "</table>";
+	}
+}
+
 function processPath(pathUrl, res)
 {
 	let rootFolder = "D:\\Dev\\Project\\vs\\cpp\\FFmpegPlayer\\x64\\Release\\";
@@ -13,39 +32,46 @@ function processPath(pathUrl, res)
 	
 	let stat = fs.lstatSync(path, {throwIfNoEntry:false});
 	if(!stat){
+		res.statusCode = 404;
 		res.write("404 - no file");
 		res.end();
 		return;
 	}
-	let isDir = stat.isDirectory();
 	
+	let isDir = stat.isDirectory();
 	if(isDir){
 		res.setHeader("Content-Type", "text/html; charset=utf-8;");
-				
-		res.write("<table border=1>");
-		res.write("<td>isDir</td><td>file</td><td>size</td><td>atime</td>");
-		res.write("<tr>");
 		
+		res.write("dir path="+ path + "<br>");
+		
+		let tableRender = new HtmlTable;
+		
+		res.write(tableRender.begin(5));
+		res.write(tableRender.row("isDir", "file", "size", "atime"));
+				
 		let linkUrl = pathModule.dirname(pathUrl);
-		res.write("<td>DIR</td><td><a href='"+linkUrl+"'>..</a></td><td>-</td><td>-</td>");
-		res.write("<tr>");
-		fs.readdirSync(path).forEach(file => {
-			
-			let fullPath = path + "/" + file;
+		
+		res.write(tableRender.row("-", "<a href='"+linkUrl+"'>..</a>", "-", "-"));
+		
+		let filesAr = fs.readdirSync(path);
+		for(file of filesAr) {
+			let fullPath = path + file;
 			let stat = fs.lstatSync(fullPath);
 			let isDir = stat.isDirectory() ? "DIR" : "FILE";
 			console.log("=", file, "===", isDir)
-			
-			//console.log("=", stat, "===");
 			
 			let linkUrl = pathUrl + "/" + file;
 			if(pathUrl=='/'){
 				linkUrl = file;
 			}
-			res.write("<td>"+isDir+"</td><td><a href='"+linkUrl+"'>"+ file +"</a></td><td>" + (stat.size/1024/1024).toFixed(2) +"MB</td><td>"+ stat.atime.toISOString() +"</td>");
-			res.write("<tr>");
-		});
-		res.write("</table>");
+			res.write(tableRender.row(
+				isDir,
+				"<a href='"+linkUrl+"'>"+file+"</a>",
+				(stat.size/1024/1024).toFixed(2) +"MB",
+				stat.atime.toISOString()
+			));
+		}
+		res.write(tableRender.end());
 		res.end();
 	}
 	else {
@@ -58,8 +84,8 @@ function processPath(pathUrl, res)
 
 
 let newReqFunc = async function (req, res) {
-	var url = urlModule.parse(req.url, true);
-	var query = url.query;
+	let url = urlModule.parse(req.url, true);
+	let query = url.query;
 	let pathname = url.pathname;
 	
 	console.log("----------------",pathname, query.key);		
