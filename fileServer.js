@@ -55,7 +55,7 @@ function processPath(pathUrl, res)
 		
 		let filesAr = fs.readdirSync(path);
 		for(file of filesAr) {
-			let fullPath = path + file;
+			let fullPath = path + "/" + file;
 			let stat = fs.lstatSync(fullPath);
 			let isDir = stat.isDirectory() ? "DIR" : "FILE";
 			console.log("=", file, "===", isDir)
@@ -76,7 +76,12 @@ function processPath(pathUrl, res)
 	}
 	else {
 		let buff = fs.readFileSync(path);
-		console.log("-----buff length==", buff.length);	
+		let extname = pathModule.extname(path);
+		console.log("-----buff length==", extname, buff.length);
+		
+		if(extname==".txt" || extname==".html"){
+			res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
+		}
 		res.write(buff)
 		res.end();
 	}
@@ -85,8 +90,10 @@ function processPath(pathUrl, res)
 
 let newReqFunc = async function (req, res) {
 	let url = urlModule.parse(req.url, true);
+	//let url = new URL(req.url);
 	let query = url.query;
 	let pathname = url.pathname;
+	pathname = decodeURI(pathname);
 	
 	console.log("----------------",pathname, query.key);		
 	try{
